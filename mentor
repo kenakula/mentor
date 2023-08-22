@@ -1,0 +1,46 @@
+#!/bin/bash
+# naming repos by student github nickname
+set -e
+
+source ./lib
+
+if [ $# = 0 ]; then
+    printHelp
+    exit 0;
+fi
+
+for arg in "$@"; do
+    if [ "$arg" == '--pull' ]; then
+        pullRepos
+        exit 0;
+    fi
+
+    if [ "$arg" == '--ci' ]; then
+        installDepsOnly
+        exit 0;
+    fi
+
+    if [ "$arg" == '--help' ]; then
+        printHelp
+        exit 0;
+    fi
+done
+
+while getopts r:f:h: flag
+do
+    case "${flag}" in
+        r) reposFile=${OPTARG};;
+        f) dirName=${OPTARG};;
+        *) echo "invalid argument, type ./mentor --help to see options"
+            exit 0 ;;
+    esac
+done
+
+checkFolder "$dirName"
+checkFile "$reposFile"
+
+cd "$dirName"
+
+cloneRepos "$reposFile"
+
+installDeps

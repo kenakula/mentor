@@ -1,0 +1,120 @@
+#!/bin/bash
+
+ME=$(basename "$0")
+
+function printHelp() {
+    echo "Работа c файлом ${ME}"
+    echo
+    echo "Options:"
+    echo "  -f folderName       Название папки где установить репозитории"
+    echo "  -r reposFileName    Название файла со списком репозиториев"
+    echo "  --pull              Делает git pull origin master в каждой папке указанной папки"
+    echo "  --ci                Делает npm ci в каждой папке указанной папки"
+    echo "  --help              Показывает доступные параметры"
+}
+
+checkFolder() {
+    if [ -d "$1" ]; then
+        :
+    else
+        echo "Directory $1 does not exist, creating new one"
+        mkdir "$1"
+    fi
+}
+
+checkFile() {
+    if [ -e "$1" ]; then
+        :
+    else
+        echo "File $1 does not exist, let's create one"
+        exit 2
+    fi
+}
+
+splitRepo() {
+    IFS=$'/'
+    read -ra URL <<< "$1"
+    unset IFS
+
+    echo "${URL[3]}"
+}
+
+cloneRepos() {
+    count=1
+
+    cat ../"$1" | while read -r url; do
+        studentName=$(splitRepo "$url")
+        echo "cloning $studentName's repo"
+        git clone -q "$url" "$studentName"
+        echo "repository #$count cloned"
+        count=$(($count + 1))
+    done
+}
+
+installInDirs() {
+    dirs=$(ls)
+
+    for dir in $dirs; do
+        cd "$dir" || die "$dir does not exist: FAIL"
+        npm ci
+        echo "$dir repo is ready"
+        cd ..
+    done
+}
+
+
+installDeps() {
+    echo -n 'Do you want to install dependencies? (y|n): '; read -r answer
+
+    case $answer in
+        y|Y) echo "ok, go"
+            installInDirs;;
+        n|N) echo "nice job!"
+            exit 0
+            ;;
+        *) echo "OK"
+            installInDirs;;
+    esac
+}
+
+installDepsOnly() {
+    echo -n 'Enter folder name: '; read -r folderName
+
+    if [ -d "$folderName" ]; then
+        cd "$folderName" || die "Directory $folderName does not exist: FAIL"
+    else
+        echo "Directory $folderName does not exist: FAIL"
+        exit 0
+    fi
+
+    dirs=$(ls)
+
+    for dir in $dirs; do
+        cd "$dir" || die "$dir does not exist: FAIL"
+        npm ci
+        echo "$dir repo is ready: OK"
+        cd ..
+    done
+}
+
+
+
+pullRepos() {
+    echo -n 'Enter folder name: '; read folderName
+
+    if [ -d "$folderName" ]; then
+        cd "$folderName" || die "Directory $folderName does not exist: FAIL"
+    else
+        echo "Directory $folderName does not exist: FAIL"
+        exit 0
+    fi
+
+    dirs=$(ls)
+
+    for dir in $dirs; do
+        cd "$dir" || die "$dir does not exist: FAIL"
+        git pull origin master
+        echo "$dir repo is pulled: OK"
+        cd ..
+    done
+}
